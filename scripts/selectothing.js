@@ -1,11 +1,12 @@
 var SELECTED_CLASS = 'selected';
-var SCROLL_INCREMENT = 20;
+var SCROLL_INCREMENT = 5;
 var TOLERANCE = 0.95;
 var direction = null;
 
 var mouseIsDown = false;
 var dragging = false;
 var point = null;
+var lastY = 0;
 // querySelectorAll returns a node list object, xform it into a standard array
 var selectableList = [].slice.call(document.querySelectorAll('.selectable'), 0);
 
@@ -14,6 +15,12 @@ var selectableList = [].slice.call(document.querySelectorAll('.selectable'), 0);
 var startVector = null;
 
 var pageHeight = document.body.offsetHeight;
+var pageWidth = document.body.offsetWidth;
+
+function isPageBottom() {
+  return scrollTop() === (scrollHeight() - screenHeight());
+}
+
 
 function screenHeight() {
   return window.innerHeight;
@@ -89,17 +96,19 @@ function onMouseMove(event) {
 
   dragging = true;
 
+  setMouseDirection(y);
+
   shouldSelect(x, y);
 
   if ((event.y + scrollTop() < scrollHeight())) {
-    shouldScroll(x,y);
+    shouldScroll(y);
   }
 
+  if (!isPageBottom() && scrollTop() && (y > (screenHeight() - 10))) {
+    var yy = 0;
 
-  if (scrollTop() && (y > (TOLERANCE * screenHeight()))) {
-    var yy = null;
     if (event.pageY > scrollHeight()) {
-      yy = scrollHeight;
+      yy = scrollHeight();
     }
     updatePoint(x, Math.abs(yy - scrollTop()));
   } else {
@@ -112,28 +121,37 @@ function onMouseMove(event) {
 }
 
 
-function shouldScroll(yPos) {
-  var screenHeight = window.innerHeight;
-  var yTolerance = TOLERANCE * screenHeight;
+function setMouseDirection(newY) {
+ //direction = ((newY + scrollTop()) > startVector.y) ? 'down' : 'up';
+  direction = (lastY < (newY+scrollTop())) ? 'down' : 'up';
+}
 
-  if (yPos < yTolerance) {
-  	console.log('within tolerance', yPos, yTolerance)
+// Is the user scrolling past the bottom of the page or the top?
+function isOutOfBounds() {
+  return (scrollTop() + SCROLL_INCREMENT) > scrollHeight() ||
+         (scrollTop() + SCROLL_INCREMENT) <= 0
+}
+
+function shouldScroll(yPos) {
+  lastY = yPos+scrollTop();
+
+  if (yPos < (screenHeight() / 2) && direction !== 'up') {
+    console.log('returning', direction)
     return;
   }
 
+  if (isOutOfBounds()) {
+    return;
+  }
 
-  if (scrollTop() < (scrollHeight() - screenHeight)) {
+  if (direction === 'down') {
     window.scrollBy(0, SCROLL_INCREMENT);
+  } else {
+    console.log('going up?')
+    window.scrollBy(0, -SCROLL_INCREMENT);
   }
 }
 
-function scrollUp() {
-  direction = 'up';
-}
-
-function scrollDown() {
-  direction = 'down';
-}
 
 function hasCollision(a, b) {
   var rect1 = a.getBoundingClientRect();
@@ -188,6 +206,8 @@ function removePoint() {
 }
 
 function updatePoint(newX, newY) {
+  var newPaddingTop;
+
   newY = newY + scrollTop();
 
   if (newX < startVector.x) {
@@ -195,16 +215,32 @@ function updatePoint(newX, newY) {
   }
 
   if (newY < startVector.y) {
-    point.style.top = newY + 'px';
+    point.style.top = newY < 0 ? 0 : newY + 'px';
   }
 
-  point.style.paddingRight = Math.abs(newX - startVector.x) + 'px';
+  if (newX > pageWidth) {
+    newX = pageWidth;
+  }
+
+  if (newY > pageHeight) {
+    newY = scrollHeight();
+  } else if (newY < 0) {
+    newY = point.style.paddingTop + startVector.y;
+  }
+
+  point.style.paddingLeft = Math.abs(newX - startVector.x) + 'px';
   point.style.paddingTop = Math.abs(newY - startVector.y) + 'px';
 }
 
 function Vector(x,y) {
   this.x = x;
   this.y = y;
+}
+
+function clampX(value) {
+  if (value > pageWidth) {
+    return pageWidth;
+  }
 }
 
 function log(message) {
