@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      position: relative;
+      overflow-y: scroll;
+    }
+    .ripple,.ripple:before {
+      display:block;
+      border-radius: 2px;
+      width: 0px;
+      height: 0px;
+      -webkit-animation:rip 0.2s linear;
+    }
+
+    @-webkit-keyframes rip {
+      0%  {
+        box-shadow:0 0 10px 0px #eee,
+                   0 0 0 0 #eee,
+                   0 0 0 0 #eee
+      }
+      20% {
+        box-shadow:0 0 10px 0 #008bbf,
+                   0 0 20px 0 rgba(255,255,255,0.2),
+                   0 0 40px 0 #008bbf
+      }
+      100% {
+        box-shadow:0 0 40px 10px #009fdf,
+                   0 0 10px 20px transparent,
+                   0 0 30px 30px #009fdf
+      }
+    }
+
+    #log {
+    border: 2px solid #555;
+    border-radius: 2px 2px;
+    height: 50px;
+    width: 25%;
+    margin-bottom: 20px;
+    color: #4588af;
+    text-align: center;
+    padding: 12px 0px 5px 0px;
+  }
+
+
+  body.drag {
+    cursor: pointer;
+  }
+
+  .square {
+    height: 120px;
+    background: #ff5567;
+  }
+
+  .selected {
+    outline: 4px solid #333;
+  }
+
+  .col {
+    float: left;
+    width: 12.5%;
+    margin-right: 20px;
+  }
+
+  .col:last-of-type {
+    margin-right: 0px;
+  }
+
+  .grid {
+    margin-bottom: 20px;
+  }
+
+  .grid:after {
+    content: "";
+    clear: both;
+    display: table;
+  }
+
+  *, *:after, *:before {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    outline: 0;
+  }
+
+  .click-point {
+    position: fixed;
+    /*overflow: visible;*/
+    z-index: 100000;
+    border: 3px solid #000;
+    background: #009fdf;
+    opacity: 0.4;
+  }
+</style>
+</head>
+<body>
+  <div id="log"></div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+    <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div><div class="grid">
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+    <div class="square col selectable"></div>
+  </div>
+  <script src="scripts/selectothing.js"></script>
+</body>
+</html>
