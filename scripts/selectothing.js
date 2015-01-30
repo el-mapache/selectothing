@@ -7,20 +7,9 @@ var mouseIsDown = false;
 var dragging = false;
 var point = null;
 var lastY = 0;
-var boundingBoxCache = {};
 // querySelectorAll returns a node list object, xform it into a standard array
 var selectableList = [].slice.call(document.querySelectorAll('.selectable'), 0);
 
-selectableList.forEach(function(item, index) {
-  item.setAttribute('data-key', index);
-  var box = item.getBoundingClientRect();
-  boundingBoxCache[index] = {
-      left: box.left,
-      width: box.width,
-      height: box.height,
-      top: box.top
-    };
-});
 
 // Every time a new spot is clicked, until mouse is
 // released, we will create a new startVector object.
@@ -58,7 +47,8 @@ var scrollHeight = function () {
 
 document.addEventListener('mousedown', onMouseDown);
 document.addEventListener('mouseup', onMouseUp);
-document.addEventListener('mousemove', onMouseMove);
+
+
 
 function cleanup() {
   document.removeEventListener('mousedown', onMouseDown);
@@ -71,10 +61,13 @@ function onMouseDown(event) {
 
   mouseIsDown = true;
 
-  document.body.className = 'drag';
+  document.addEventListener('mousemove', debounce(5, onMouseMove));
+
+  //document.body.className = 'drag';
 
   var y = event.pageY,
       x = event.x;
+
 
   makeClickPoint(x, y);
   startVector = new Vector(x, y);
@@ -83,11 +76,12 @@ function onMouseDown(event) {
 function onMouseUp(event) {
   event.preventDefault();
 
+  document.removeEventListener('mousemove', onMouseMove);
+
   mouseIsDown = false;
   dragging = false;
 
-  document.body.className = '';
-  totalScroll = 0;
+  //document.body.className = '';
 
   startVector = null;
   removePoint();
@@ -171,7 +165,7 @@ function debounce(interval, callback) {
   return function() {
     var thisCall = +new Date;
 
-    if (thisCall - lastCall >= delay) {
+    if (thisCall - lastCall >= interval) {
       lastCall = thisCall;
       thisCall = null;
       callback.apply(null, arguments);
@@ -180,22 +174,21 @@ function debounce(interval, callback) {
 }
 
 function hasCollision(a, b) {
-  var rect1 = a.getBoundingClientRect();
-
-
-  //var cacheKey = b.getAttribute('data-key');
-  rect2 = b.getBoundingClientRect();//boundingBoxCache[cacheKey];
+  var rect1 = a.getBoundingClientRect(),
+      rect2 = b.getBoundingClientRect();
 
   if (rect1.left < rect2.left + rect2.width &&
       rect1.left + rect1.width > rect2.left &&
-      rect1.top < rect2.top + rect2.height &&
+      rect1.top < rect2.top + rect2.height  &&
       rect1.height + rect1.top > rect2.top) {
     rect1 = null;
     rect2 = null;
     return true;
   }
-    rect1 = null;
-    rect2 = null;
+
+  rect1 = null;
+  rect2 = null;
+
   return false;
 }
 
@@ -215,11 +208,8 @@ function shouldSelect(x, y) {
       }
 
       selected.push(item);
-
-      //item.className = item.className + ' ' + SELECTED_CLASS;
     } else {
       unselected.push(item)
-      //item.className = item.className.replace(' ' + SELECTED_CLASS, '');
     }
     item = null;
   });
@@ -228,14 +218,14 @@ function shouldSelect(x, y) {
     selected.forEach(function(item) {
       item.className = item.className + ' ' + SELECTED_CLASS;
     });
-        unselected.forEach(function(item) {
+
+    unselected.forEach(function(item) {
       item.className = item.className.replace(' ' + SELECTED_CLASS, '');
     });
-          selected.length = 0;
-  unselected.length = 0;
+
+    selected.length = 0;
+    unselected.length = 0;
   });
-
-
 }
 
 function makeClickPoint(x, y) {
@@ -251,6 +241,10 @@ function makeClickPoint(x, y) {
 }
 
 function removePoint() {
+  if (!point) {
+    return;
+  }
+
   document.body.removeChild(point);
   point = null;
 }
