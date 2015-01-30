@@ -7,8 +7,20 @@ var mouseIsDown = false;
 var dragging = false;
 var point = null;
 var lastY = 0;
+var boundingBoxCache = {};
 // querySelectorAll returns a node list object, xform it into a standard array
 var selectableList = [].slice.call(document.querySelectorAll('.selectable'), 0);
+
+selectableList.forEach(function(item, index) {
+  item.setAttribute('data-key', index);
+  var box = item.getBoundingClientRect();
+  boundingBoxCache[index] = {
+      left: box.left,
+      width: box.width,
+      height: box.height,
+      top: box.top
+    };
+});
 
 // Every time a new spot is clicked, until mouse is
 // released, we will create a new startVector object.
@@ -51,14 +63,13 @@ document.addEventListener('mousemove', onMouseMove);
 function cleanup() {
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
-  document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('mousemove', debounce(5, onMouseMove));
 }
 
 function onMouseDown(event) {
   event.preventDefault();
 
   mouseIsDown = true;
-  log('mouse is down at ' + event.x + ', ' + event.y, mouseIsDown);
 
   document.body.className = 'drag';
 
@@ -74,8 +85,6 @@ function onMouseUp(event) {
 
   mouseIsDown = false;
   dragging = false;
-
-  log('mouse is up.', mouseIsDown);
 
   document.body.className = '';
   totalScroll = 0;
@@ -94,17 +103,19 @@ function onMouseMove(event) {
   var x = event.x,
       y = event.y;
 
+
   dragging = true;
 
   setMouseDirection(y);
 
   shouldSelect(x, y);
 
-  if ((event.y + scrollTop() < scrollHeight())) {
+  if ((y + scrollTop()) < scrollHeight()) {
     shouldScroll(y);
   }
 
-  if (!isPageBottom() && scrollTop() && (y > (screenHeight() - 10))) {
+  // not sure what the purpose of screenHeight - 40 is here
+  if (!isPageBottom() && scrollTop() && (y > (screenHeight() - 40))) {
     var yy = 0;
 
     if (event.pageY > scrollHeight()) {
@@ -114,58 +125,77 @@ function onMouseMove(event) {
   } else {
     updatePoint(x, y);
   }
-
-  log(selectableList.filter(function(item) {
-    return hasSelected(item);
-  }).length + ' items selected.');
 }
 
 
 function setMouseDirection(newY) {
- //direction = ((newY + scrollTop()) > startVector.y) ? 'down' : 'up';
   direction = (lastY < (newY+scrollTop())) ? 'down' : 'up';
 }
 
 // Is the user scrolling past the bottom of the page or the top?
-function isOutOfBounds() {
+function outOfPageBounds() {
   return (scrollTop() + SCROLL_INCREMENT) > scrollHeight() ||
          (scrollTop() + SCROLL_INCREMENT) <= 0
 }
 
 function shouldScroll(yPos) {
-  lastY = yPos+scrollTop();
+  var absY = Math.abs(yPos);
 
-  if (yPos < (screenHeight() / 2) && direction !== 'up') {
-    console.log('returning', direction)
+  if (outOfPageBounds()) {
     return;
   }
 
-  if (isOutOfBounds()) {
-    return;
+  if (yPos < 0) {
+    dragScroll(0, -Math.abs(yPos)/4);
   }
 
-  if (direction === 'down') {
-    window.scrollBy(0, SCROLL_INCREMENT);
-  } else {
-    console.log('going up?')
-    window.scrollBy(0, -SCROLL_INCREMENT);
+  if (yPos > (screenHeight() - SCROLL_INCREMENT * 50) ||
+     yPos < (SCROLL_INCREMENT * 50) || yPos > screenHeight()) {
+
+    lastY = yPos + scrollTop();
+    if (direction === 'down') {
+      dragScroll(0, SCROLL_INCREMENT);
+    } else {
+      dragScroll(0, -SCROLL_INCREMENT);
+    }
   }
 }
 
+function dragScroll(x, y) {
+  window.scrollBy(0, y);
+}
+
+function debounce(interval, callback) {
+  var lastCall = +new Date;
+
+  return function() {
+    var thisCall = +new Date;
+
+    if (thisCall - lastCall >= delay) {
+      lastCall = thisCall;
+      thisCall = null;
+      callback.apply(null, arguments);
+    }
+  };
+}
 
 function hasCollision(a, b) {
   var rect1 = a.getBoundingClientRect();
-  var rect2 = b.getBoundingClientRect();
-  // cache results of b so i dont have to query the dom every time i scroll
-  // over the same element.
+
+
+  //var cacheKey = b.getAttribute('data-key');
+  rect2 = b.getBoundingClientRect();//boundingBoxCache[cacheKey];
 
   if (rect1.left < rect2.left + rect2.width &&
       rect1.left + rect1.width > rect2.left &&
       rect1.top < rect2.top + rect2.height &&
       rect1.height + rect1.top > rect2.top) {
+    rect1 = null;
+    rect2 = null;
     return true;
   }
-
+    rect1 = null;
+    rect2 = null;
   return false;
 }
 
@@ -174,6 +204,9 @@ function hasSelected(node) {
 }
 
 function shouldSelect(x, y) {
+  var selected = [];
+  var unselected = [];
+
   selectableList.forEach(function(item) {
     if (hasCollision(point, item)) {
 
@@ -181,11 +214,28 @@ function shouldSelect(x, y) {
         return;
       }
 
-      item.className = item.className + ' ' + SELECTED_CLASS;
+      selected.push(item);
+
+      //item.className = item.className + ' ' + SELECTED_CLASS;
     } else {
-      item.className = item.className.replace(' ' + SELECTED_CLASS, '');
+      unselected.push(item)
+      //item.className = item.className.replace(' ' + SELECTED_CLASS, '');
     }
+    item = null;
   });
+
+  window.requestAnimationFrame(function() {
+    selected.forEach(function(item) {
+      item.className = item.className + ' ' + SELECTED_CLASS;
+    });
+        unselected.forEach(function(item) {
+      item.className = item.className.replace(' ' + SELECTED_CLASS, '');
+    });
+          selected.length = 0;
+  unselected.length = 0;
+  });
+
+
 }
 
 function makeClickPoint(x, y) {
@@ -228,8 +278,7 @@ function updatePoint(newX, newY) {
     newY = point.style.paddingTop + startVector.y;
   }
 
-  point.style.paddingLeft = Math.abs(newX - startVector.x) + 'px';
-  point.style.paddingTop = Math.abs(newY - startVector.y) + 'px';
+  point.style.padding = Math.abs(newY - startVector.y) + 'px 0px 0px ' + Math.abs(newX - startVector.x) + 'px';
 }
 
 function Vector(x,y) {
@@ -246,3 +295,9 @@ function clampX(value) {
 function log(message) {
   document.getElementById('log').textContent = message;
 }
+
+// Note: maybe it would be better to treat a negative number as the point to move to one page up,
+// ie, -50 applied to a screen height of 700 would move the cursor up one screen to the position of 650.
+
+
+// I should be recentering the screen when dragging
