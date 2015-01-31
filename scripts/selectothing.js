@@ -47,14 +47,41 @@ var scrollHeight = function () {
 
 document.addEventListener('mousedown', onMouseDown);
 document.addEventListener('mouseup', onMouseUp);
+document.addEventListener('mouseout', onMouseOut);
 
+// document.addEventListener('mousein', onMouseIn);
 
 
 function cleanup() {
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
-  document.removeEventListener('mousemove', debounce(5, onMouseMove));
+  document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('mouseout', onMouseOut);
 }
+
+function onMouseOut(event) {
+  // rather than debounce, we need to set an 'about to fire mouseup' flag, then
+  // when/if the user mouses back in we can cancel the mouse up
+  // this is a perfect use case for channels and an alt, where we
+  //could do yield alt(cancel, mouseup) or something.
+  var from = event.relatedTarget || event.toElement;
+
+  if (!from || from.nodeName === "HTML") {
+    onMouseUp();
+  }
+}
+
+// function onMouseIn(event) {
+//   var from = event.relatedTarget || event.toElement;
+
+//   if (!from || from.nodeName === "HTML") {
+//     console.log('out of window')
+//     debounce(400, function() {
+//       console.log('debounce done')
+//       onMouseUp();
+//     })();
+//   }
+// }
 
 function onMouseDown(event) {
   event.preventDefault();
@@ -63,7 +90,7 @@ function onMouseDown(event) {
 
   document.addEventListener('mousemove', debounce(5, onMouseMove));
 
-  //document.body.className = 'drag';
+  document.body.className = 'drag';
 
   var y = event.pageY,
       x = event.x;
@@ -73,15 +100,13 @@ function onMouseDown(event) {
   startVector = new Vector(x, y);
 }
 
-function onMouseUp(event) {
-  event.preventDefault();
-
+function onMouseUp() {
   document.removeEventListener('mousemove', onMouseMove);
 
   mouseIsDown = false;
   dragging = false;
 
-  //document.body.className = '';
+  document.body.className = '';
 
   startVector = null;
   removePoint();
@@ -105,7 +130,7 @@ function onMouseMove(event) {
   shouldSelect(x, y);
 
   if ((y + scrollTop()) < scrollHeight()) {
-    shouldScroll(y);
+    shouldScroll(x,y);
   }
 
   // not sure what the purpose of screenHeight - 40 is here
@@ -132,7 +157,12 @@ function outOfPageBounds() {
          (scrollTop() + SCROLL_INCREMENT) <= 0
 }
 
-function shouldScroll(yPos) {
+
+var animationInterval;
+var timeElapsed = 0;
+
+
+function shouldScroll(x, yPos) {
   var absY = Math.abs(yPos);
 
   if (outOfPageBounds()) {
@@ -143,6 +173,24 @@ function shouldScroll(yPos) {
     dragScroll(0, -Math.abs(yPos)/4);
   }
 
+  // if (yPos > (screenHeight() / 2)) {
+  //   var endLocation = window.pageYOffset + (screenHeight() / 2);
+  //   var currentLocation = window.pageYOffset;
+  //   document.removeEventListener('mousemove', onMouseMove);
+  //   while (currentLocation <= endLocation) {
+  //     timeLapsed += 16;
+  //     var distance = endLocation - currentLocation;
+  //     var percentage = ( timeLapsed / parseInt(500, 10) );
+  //     percentage = ( percentage > 1 ) ? 1 : percentage;
+  //     var position = window.pageYOffset + ( distance * (--percentage) * percentage * percentage + 1 );
+  //     window.scrollTo( 0, Math.floor(position) );
+  //     currentLocation = position;
+  //     updatePoint(x, currentLocation)
+  //   }
+  //   timeLapsed = 0;
+  //   document.addEventListener('mousemove', debounce(5,onMouseMove));
+  //   //window.scrollBy(0, 200);
+  // }
   if (yPos > (screenHeight() - SCROLL_INCREMENT * 50) ||
      yPos < (SCROLL_INCREMENT * 50) || yPos > screenHeight()) {
 
@@ -177,19 +225,22 @@ function hasCollision(a, b) {
   var rect1 = a.getBoundingClientRect(),
       rect2 = b.getBoundingClientRect();
 
+  var result;
+
   if (rect1.left < rect2.left + rect2.width &&
       rect1.left + rect1.width > rect2.left &&
       rect1.top < rect2.top + rect2.height  &&
       rect1.height + rect1.top > rect2.top) {
-    rect1 = null;
-    rect2 = null;
-    return true;
+
+    result = true;
+  } else {
+    result = false;
   }
 
   rect1 = null;
   rect2 = null;
 
-  return false;
+  return result;
 }
 
 function hasSelected(node) {
