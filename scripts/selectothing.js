@@ -1,6 +1,5 @@
 var SELECTED_CLASS = 'selected';
 var SCROLL_INCREMENT = 5;
-var TOLERANCE = 0.95;
 var direction = null;
 
 var mouseIsDown = false;
@@ -10,7 +9,6 @@ var lastY = 0;
 // querySelectorAll returns a node list object, xform it into a standard array
 var selectableList = [].slice.call(document.querySelectorAll('.selectable'), 0);
 
-
 // Every time a new spot is clicked, until mouse is
 // released, we will create a new startVector object.
 var startVector = null;
@@ -18,8 +16,56 @@ var startVector = null;
 var pageHeight = document.body.offsetHeight;
 var pageWidth = document.body.offsetWidth;
 
+/*
+ * Easing Functions - inspired from http://gizma.com/easing/
+ * only considering the t value for the range [0, 1] => [0, 1]
+ */
+var easingFunctions = {
+  // no easing, no acceleration
+  linear: function (t) { return t; },
+  // accelerating from zero velocity
+  easeInQuad: function (t) { return t * t; },
+  // decelerating to zero velocity
+  easeOutQuad: function (t) { return t * (2 - t); },
+  // acceleration until halfway, then deceleration
+  easeInOutQuad: function (t) { return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t; },
+  // accelerating from zero velocity
+  easeInCubic: function (t) { return t * t * t; },
+  // decelerating to zero velocity
+  easeOutCubic: function (t) { return (--t) * t * t + 1; },
+  // acceleration until halfway, then deceleration
+  easeInOutCubic: function (t) { return t<.5 ? 4 * t * t * t : (t - 1) * (2 * t - 2) * (2 * t - 2) + 1; },
+  // accelerating from zero velocity
+  easeInQuart: function (t) { return t * t * t * t; },
+  // decelerating to zero velocity
+  easeOutQuart: function (t) { return 1 - (--t) * t * t * t; },
+  // acceleration until halfway, then deceleration
+  easeInOutQuart: function (t) { return t < 0.5 ? 8 * t * t * t * t : 1 - 8 *(--t) * t * t * t; },
+  // accelerating from zero velocity
+  easeInQuint: function (t) { return t * t * t * t * t },
+  // decelerating to zero velocity
+  easeOutQuint: function (t) { return 1 + (--t) * t * t * t * t },
+  // acceleration until halfway, then deceleration
+  easeInOutQuint: function (t) { return t < 0.5 ? 16 * t * t * t * t * t : 1 + 16 * (--t) * t * t * t * t; },
+
+  list: function() {
+    return Object.keys(this);
+  }
+};
+
+
 function isPageBottom() {
   return scrollTop() === (scrollHeight() - screenHeight());
+}
+
+function isPageTop() {
+  return scrollTop() === 0;
+}
+
+// Is the user attempting to scroll past the bottom or top of the page?
+function outOfPageBounds() {
+  return (scrollTop() + SCROLL_INCREMENT) > scrollHeight() ||
+         (scrollTop() + SCROLL_INCREMENT) <= 0
 }
 
 
@@ -45,6 +91,10 @@ var scrollHeight = function () {
   };
 }();
 
+function mouseMoveListener() {
+  document.addEventListener('mousemove', debounce(8, onMouseMove));
+}
+
 document.addEventListener('mousedown', onMouseDown);
 document.addEventListener('mouseup', onMouseUp);
 document.addEventListener('mouseout', onMouseOut);
@@ -67,34 +117,21 @@ function onMouseOut(event) {
   var from = event.relatedTarget || event.toElement;
 
   if (!from || from.nodeName === "HTML") {
-    onMouseUp();
+   document.removeEventListener('mousemove', onMouseMove);
   }
 }
-
-// function onMouseIn(event) {
-//   var from = event.relatedTarget || event.toElement;
-
-//   if (!from || from.nodeName === "HTML") {
-//     console.log('out of window')
-//     debounce(400, function() {
-//       console.log('debounce done')
-//       onMouseUp();
-//     })();
-//   }
-// }
 
 function onMouseDown(event) {
   event.preventDefault();
 
   mouseIsDown = true;
 
-  document.addEventListener('mousemove', debounce(5, onMouseMove));
+  mouseMoveListener();
 
   document.body.className = 'drag';
 
   var y = event.pageY,
       x = event.x;
-
 
   makeClickPoint(x, y);
   startVector = new Vector(x, y);
@@ -122,101 +159,77 @@ function onMouseMove(event) {
   var x = event.x,
       y = event.y;
 
-
   dragging = true;
 
   setMouseDirection(y);
 
-  shouldSelect(x, y);
+  shouldSelect();
 
   if ((y + scrollTop()) < scrollHeight()) {
-    shouldScroll(x,y);
+    shouldScroll(y);
   }
 
-  // not sure what the purpose of screenHeight - 40 is here
-  if (!isPageBottom() && scrollTop() && (y > (screenHeight() - 40))) {
-    var yy = 0;
-
-    if (event.pageY > scrollHeight()) {
-      yy = scrollHeight();
-    }
-    updatePoint(x, Math.abs(yy - scrollTop()));
-  } else {
-    updatePoint(x, y);
-  }
+  updatePoint(x, y);
 }
 
 
 function setMouseDirection(newY) {
-  direction = (lastY < (newY+scrollTop())) ? 'down' : 'up';
+  direction = (lastY < (newY + scrollTop())) ? 'down' : 'up';
 }
-
-// Is the user scrolling past the bottom of the page or the top?
-function outOfPageBounds() {
-  return (scrollTop() + SCROLL_INCREMENT) > scrollHeight() ||
-         (scrollTop() + SCROLL_INCREMENT) <= 0
-}
-
-
 
 var isAnimating = false;
 
-function startAnimation(xPos, start, end) {
+function startAnimation(start, end) {
   var currentLocation  = start;
   var timeElapsed = 0;
   var distance = end - start;
   isAnimating = true;
-  document.removeEventListener('mousemove', onMouseMove);
 
   function onTick() {
-    if (currentLocation >= end || isPageBottom()) {
+    // this statement is too complicated and can be simplified, not sure how yet.
+    if (((currentLocation >= end) && distance > 0) ||
+        ((currentLocation <= end) && distance < 0) || currentLocation === 0 && distance < 0 || currentLocation === end) {
+
       isAnimating = false;
       clearInterval(animationInterval);
-      document.addEventListener('mousemove', debounce(5,onMouseMove));
-      timeElapsed = 0;
+      animationInterval = null;
     } else {
       timeElapsed += 16;
-      var percentage = timeElapsed / parseInt(1000, 10);
+      var percentage = timeElapsed / parseInt(2000, 10);
       var time = percentage > 1 ? 1 : percentage;
-      var position = currentLocation + (distance * (time < 0.5 ? 2 * time * time : -1 + (4 - 2 * time) * time));
+      var position = currentLocation + (distance * easingFunctions.easeInOutQuad(time));
       window.scrollTo(0, position | 0);
       currentLocation = window.pageYOffset;
-      //updatePoint(xPos, position)
     }
   }
 
   var animationInterval = setInterval(onTick, 16);
 }
 
-function shouldScroll(x, yPos) {
-  var absY = Math.abs(yPos);
-
+function shouldScroll(yPos) {
   if (outOfPageBounds()) {
     return;
   }
 
-  if (yPos < 0) {
-    dragScroll(0, -Math.abs(yPos)/4);
-  }
+  if (!isAnimating) {
+    lastY = yPos + scrollTop();
 
-  if (yPos > (screenHeight() / 2) && ! isAnimating) {
-    var startLocation = window.pageYOffset; // the current position of the cursor on the page
-    var endLocation = startLocation + (screenHeight() / 2);
-    startAnimation(x, startLocation, endLocation);
-  }
-  // if (yPos > (screenHeight() - SCROLL_INCREMENT * 50) ||
-  //    yPos < (SCROLL_INCREMENT * 50) || yPos > screenHeight()) {
+    var startLocation = window.pageYOffset;
+    var endLocation;
 
-  //   lastY = yPos + scrollTop();
-  //   if (direction === 'down') {
-  //     dragScroll(0, SCROLL_INCREMENT);
-  //   } else {
-  //     dragScroll(0, -SCROLL_INCREMENT);
-  //   }
-  // }
+    if (direction === 'up' && (yPos < 100)) {
+      endLocation = startLocation - (screenHeight() / 2);
+    } else if (direction === 'down' && (yPos > (screenHeight() - 100))) {
+      endLocation = startLocation + 400;
+    } else {
+      return;
+    }
+
+    startAnimation(startLocation, endLocation);
+  }
 }
 
-function dragScroll(x, y) {
+function dragScroll(y) {
   window.scrollBy(0, y);
 }
 
@@ -260,7 +273,7 @@ function hasSelected(node) {
   return (new RegExp(SELECTED_CLASS).test(node.className));
 }
 
-function shouldSelect(x, y) {
+function shouldSelect() {
   var selected = [];
   var unselected = [];
 
@@ -302,6 +315,8 @@ function makeClickPoint(x, y) {
   point.style.position = 'absolute';
 
   document.body.appendChild(point);
+
+  lastY = y;
 }
 
 function removePoint() {
@@ -314,8 +329,6 @@ function removePoint() {
 }
 
 function updatePoint(newX, newY) {
-  var newPaddingTop;
-
   newY = newY + scrollTop();
 
   if (newX < startVector.x) {
@@ -326,9 +339,7 @@ function updatePoint(newX, newY) {
     point.style.top = newY < 0 ? 0 : newY + 'px';
   }
 
-  if (newX > pageWidth) {
-    newX = pageWidth;
-  }
+  newX = clampX(newX);
 
   if (newY > pageHeight) {
     newY = scrollHeight();
@@ -345,17 +356,5 @@ function Vector(x,y) {
 }
 
 function clampX(value) {
-  if (value > pageWidth) {
-    return pageWidth;
-  }
+  return value > pageWidth ? pageWidth : value;
 }
-
-function log(message) {
-  document.getElementById('log').textContent = message;
-}
-
-// Note: maybe it would be better to treat a negative number as the point to move to one page up,
-// ie, -50 applied to a screen height of 700 would move the cursor up one screen to the position of 650.
-
-
-// I should be recentering the screen when dragging

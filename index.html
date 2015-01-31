@@ -2,47 +2,35 @@
 <html>
 <head>
   <style>
-    body {
-      position: relative;
-      overflow-y: scroll;
-    }
-    .ripple,.ripple:before {
-      display:block;
-      border-radius: 2px;
-      width: 0px;
-      height: 0px;
-      -webkit-animation:rip 0.2s linear;
-    }
-
-    @-webkit-keyframes rip {
-      0%  {
-        box-shadow:0 0 10px 0px #eee,
-                   0 0 0 0 #eee,
-                   0 0 0 0 #eee
-      }
-      20% {
-        box-shadow:0 0 10px 0 #008bbf,
-                   0 0 20px 0 rgba(255,255,255,0.2),
-                   0 0 40px 0 #008bbf
-      }
-      100% {
-        box-shadow:0 0 40px 10px #009fdf,
-                   0 0 10px 20px transparent,
-                   0 0 30px 30px #009fdf
-      }
-    }
-
-    #log {
-    border: 2px solid #555;
-    border-radius: 2px 2px;
-    height: 50px;
-    width: 25%;
-    margin-bottom: 20px;
-    color: #4588af;
-    text-align: center;
-    padding: 12px 0px 5px 0px;
+  body {
+    position: relative;
   }
 
+  .ripple,.ripple:before {
+    display:block;
+    border-radius: 2px;
+    width: 0px;
+    height: 0px;
+    -webkit-animation:rip 0.2s linear;
+  }
+
+  @-webkit-keyframes rip {
+    0%  {
+      box-shadow:0 0 10px 0px #eee,
+                 0 0 0 0 #eee,
+                 0 0 0 0 #eee
+    }
+    20% {
+      box-shadow:0 0 10px 0 #008bbf,
+                 0 0 20px 0 rgba(255,255,255,0.2),
+                 0 0 40px 0 #008bbf
+    }
+    100% {
+      box-shadow:0 0 40px 10px #009fdf,
+                 0 0 10px 20px transparent,
+                 0 0 30px 30px #009fdf
+    }
+  }
 
   body.drag {
     cursor: pointer;
@@ -95,7 +83,6 @@
 </style>
 </head>
 <body>
-  <div id="log"></div>
   <div class="grid">
     <div class="square col selectable"></div>
     <div class="square col selectable"></div>
