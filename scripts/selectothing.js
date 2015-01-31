@@ -158,9 +158,35 @@ function outOfPageBounds() {
 }
 
 
-var animationInterval;
-var timeElapsed = 0;
 
+var isAnimating = false;
+
+function startAnimation(xPos, start, end) {
+  var currentLocation  = start;
+  var timeElapsed = 0;
+  var distance = end - start;
+  isAnimating = true;
+  document.removeEventListener('mousemove', onMouseMove);
+
+  function onTick() {
+    if (currentLocation >= end || isPageBottom()) {
+      isAnimating = false;
+      clearInterval(animationInterval);
+      document.addEventListener('mousemove', debounce(5,onMouseMove));
+      timeElapsed = 0;
+    } else {
+      timeElapsed += 16;
+      var percentage = timeElapsed / parseInt(1000, 10);
+      var time = percentage > 1 ? 1 : percentage;
+      var position = currentLocation + (distance * (time < 0.5 ? 2 * time * time : -1 + (4 - 2 * time) * time));
+      window.scrollTo(0, position | 0);
+      currentLocation = window.pageYOffset;
+      //updatePoint(xPos, position)
+    }
+  }
+
+  var animationInterval = setInterval(onTick, 16);
+}
 
 function shouldScroll(x, yPos) {
   var absY = Math.abs(yPos);
@@ -173,34 +199,21 @@ function shouldScroll(x, yPos) {
     dragScroll(0, -Math.abs(yPos)/4);
   }
 
-  // if (yPos > (screenHeight() / 2)) {
-  //   var endLocation = window.pageYOffset + (screenHeight() / 2);
-  //   var currentLocation = window.pageYOffset;
-  //   document.removeEventListener('mousemove', onMouseMove);
-  //   while (currentLocation <= endLocation) {
-  //     timeLapsed += 16;
-  //     var distance = endLocation - currentLocation;
-  //     var percentage = ( timeLapsed / parseInt(500, 10) );
-  //     percentage = ( percentage > 1 ) ? 1 : percentage;
-  //     var position = window.pageYOffset + ( distance * (--percentage) * percentage * percentage + 1 );
-  //     window.scrollTo( 0, Math.floor(position) );
-  //     currentLocation = position;
-  //     updatePoint(x, currentLocation)
-  //   }
-  //   timeLapsed = 0;
-  //   document.addEventListener('mousemove', debounce(5,onMouseMove));
-  //   //window.scrollBy(0, 200);
-  // }
-  if (yPos > (screenHeight() - SCROLL_INCREMENT * 50) ||
-     yPos < (SCROLL_INCREMENT * 50) || yPos > screenHeight()) {
-
-    lastY = yPos + scrollTop();
-    if (direction === 'down') {
-      dragScroll(0, SCROLL_INCREMENT);
-    } else {
-      dragScroll(0, -SCROLL_INCREMENT);
-    }
+  if (yPos > (screenHeight() / 2) && ! isAnimating) {
+    var startLocation = window.pageYOffset; // the current position of the cursor on the page
+    var endLocation = startLocation + (screenHeight() / 2);
+    startAnimation(x, startLocation, endLocation);
   }
+  // if (yPos > (screenHeight() - SCROLL_INCREMENT * 50) ||
+  //    yPos < (SCROLL_INCREMENT * 50) || yPos > screenHeight()) {
+
+  //   lastY = yPos + scrollTop();
+  //   if (direction === 'down') {
+  //     dragScroll(0, SCROLL_INCREMENT);
+  //   } else {
+  //     dragScroll(0, -SCROLL_INCREMENT);
+  //   }
+  // }
 }
 
 function dragScroll(x, y) {
