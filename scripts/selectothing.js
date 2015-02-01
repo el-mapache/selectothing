@@ -3,9 +3,23 @@
 // that checks to see if the user has scrolled but the y position hasnt moved,
 //i.e. they are at the top of the window. if so, fire off a scroll call to scroll.
 
+// I think onece the mouse has been depressed and hits the bottom, jsut have it scroll quickly till the user releases the button
+
 var SELECTED_CLASS = 'selected';
+var SELECTED_REGEXP = new RegExp(SELECTED_CLASS);
 var SCROLL_INCREMENT = 5;
 var direction = null;
+
+var SCROLL_OFFSET_SLOW = 25;
+var SCROLL_OFFSET_FAST = screenHeight() / 4;
+
+var SCROLL_SPEED_FAST = 10;
+var SCROLL_SPEED_MEDIUM = 500;
+var SCROLL_SPEED_SLOW = 1500;
+
+var DIRECTION_UP = 'up';
+var DIRECTION_DOWN = 'down';
+
 
 var mouseIsDown = false;
 var dragging = false;
@@ -107,7 +121,6 @@ function mouseMoveListener() {
 function init() {
   document.addEventListener('mousedown', onMouseDown);
   document.addEventListener('mouseup', onMouseUp);
-  document.addEventListener('mouseout', onMouseOut);
 }
 
 init();
@@ -116,20 +129,8 @@ function cleanup() {
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
   document.removeEventListener('mousemove', onMouseMove);
-  document.removeEventListener('mouseout', onMouseOut);
 }
 
-function onMouseOut(event) {
-  // rather than debounce, we need to set an 'about to fire mouseup' flag, then
-  // when/if the user mouses back in we can cancel the mouse up
-  // this is a perfect use case for channels and an alt, where we
-  //could do yield alt(cancel, mouseup) or something.
-  var from = event.relatedTarget || event.toElement;
-
-  if (!from || from.nodeName === "HTML") {
-   document.removeEventListener('mousemove', onMouseMove);
-  }
-}
 
 function cancelAnimation() {
   isAnimating = false;
@@ -209,35 +210,49 @@ function shouldScroll(yPos) {
     return;
   }
 
+  var speed = SCROLL_SPEED_SLOW;
+  var easing = 'easeOutQuint';
+
  if (!isAnimating) {
     var startLocation = window.pageYOffset;
     var endLocation;
 
-    if (direction === 'up' && (yPos < 20)) {
-      endLocation = startLocation - 35;
-    } else if (direction === 'down' && (yPos > (screenHeight() - 50))) {
-      endLocation = startLocation + 35;
+    if (direction === DIRECTION_UP && (yPos < 200)) {
+      if (yPos < 20) {
+        endLocation = startLocation - SCROLL_OFFSET_FAST;
+        speed = SCROLL_SPEED_FAST;
+        easing = 'linear';
+      }
+      endLocation = startLocation - SCROLL_OFFSET_SLOW;
+    } else if (direction === DIRECTION_DOWN && (yPos > (screenHeight() - 200))) {
+      if (yPos > screenHeight() - 20) {
+        endLocation = startLocation + SCROLL_OFFSET_FAST;
+        speed = SCROLL_SPEED_FAST;
+        easing = 'linear';
+      }
+      endLocation = startLocation + SCROLL_OFFSET_SLOW;
     } else {
       return;
     }
 
-    startAnimation(startLocation, endLocation);
+    startAnimation(startLocation, endLocation, speed, easing);
   }
 }
 
 function setMouseDirection(newY) {
-  direction = (lastY < (newY + scrollTop())) ? 'down' : 'up';
+  direction = (lastY < (newY + scrollTop())) ? DIRECTION_DOWN : DIRECTION_UP;
 }
 
 var isAnimating = false;
 
-function startAnimation(start, end, speed) {
+function startAnimation(start, end, speed, easing) {
   var currentLocation  = start;
   var timeElapsed = 0;
   var distance = end - start;
   isAnimating = true;
 
-  speed = speed || 1000;
+  speed = speed || 200;
+  easing = easingFunctions[easing] || easingFunctions.easeInOutCubic;
 
 
   function onTick() {
@@ -253,7 +268,7 @@ function startAnimation(start, end, speed) {
       timeElapsed += 16;
       var percentage = timeElapsed / parseInt(speed, 10);
       percentage = percentage > 1 ? 1 : percentage;
-      var position = currentLocation + (distance * easingFunctions.linear(percentage));
+      var position = currentLocation + (distance * easing(percentage));
       window.scrollTo(0, position | 0);
       currentLocation = window.pageYOffset;
     }
@@ -263,25 +278,12 @@ function startAnimation(start, end, speed) {
   animationInterval = setInterval(onTick, 16);
 }
 
-function debounce(interval, callback) {
-  var lastCall = +new Date;
-
-  return function() {
-    var thisCall = +new Date;
-
-    if (thisCall - lastCall >= interval) {
-      lastCall = thisCall;
-      thisCall = null;
-      callback.apply(null, arguments);
-    }
-  };
-}
-
+// super naive axis aligned bounding box check.
 function hasCollision(a, b) {
   var rect1 = a.getBoundingClientRect(),
       rect2 = b.getBoundingClientRect();
 
-  var result;
+  var result = false;
 
   if (rect1.left < rect2.left + rect2.width &&
       rect1.left + rect1.width > rect2.left &&
@@ -289,8 +291,6 @@ function hasCollision(a, b) {
       rect1.height + rect1.top > rect2.top) {
 
     result = true;
-  } else {
-    result = false;
   }
 
   rect1 = null;
@@ -300,9 +300,13 @@ function hasCollision(a, b) {
 }
 
 function hasSelected(node) {
-  return (new RegExp(SELECTED_CLASS).test(node.className));
+  return (SELECTED_REGEXP.test(node.className));
 }
 
+
+// Loops through all selectable items on the page on every mousemove to see if something
+// should be selected.  actually seems not terribly unperformant, at least 
+// not with ~400 selectable items on the page.
 function shouldSelect() {
   var selected = [];
   var unselected = [];
@@ -325,13 +329,16 @@ function shouldSelect() {
     selected.forEach(function(item) {
       item.className = item.className + ' ' + SELECTED_CLASS;
     });
+    selected.length = 0;
+    selected = null;
+  });
 
+  window.requestAnimationFrame(function() {
     unselected.forEach(function(item) {
       item.className = item.className.replace(' ' + SELECTED_CLASS, '');
     });
-
-    selected.length = 0;
     unselected.length = 0;
+    unselected = null;
   });
 }
 
@@ -359,7 +366,7 @@ function removePoint() {
 }
 
 function updatePoint(newX, newY) {
-  if (newY <= 0 && isPageTop()) {
+  if (newY <= 0 && isPageTop() || newY > pageHeight) {
     return;
   }
 
@@ -392,3 +399,18 @@ function Vector(x,y) {
 function clampX(value) {
   return value > pageWidth ? pageWidth : value;
 }
+
+function debounce(interval, callback) {
+  var lastCall = +new Date;
+
+  return function() {
+    var thisCall = +new Date;
+
+    if (thisCall - lastCall >= interval) {
+      lastCall = thisCall;
+      thisCall = null;
+      callback.apply(null, arguments);
+    }
+  };
+}
+
