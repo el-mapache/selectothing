@@ -1,3 +1,8 @@
+// different easings for how its being dragged
+// need a function that runs inside an event loop (while depressed)
+// that checks to see if the user has scrolled but the y position hasnt moved,
+//i.e. they are at the top of the window. if so, fire off a scroll call to scroll.
+
 var SELECTED_CLASS = 'selected';
 var SCROLL_INCREMENT = 5;
 var direction = null;
@@ -6,6 +11,10 @@ var mouseIsDown = false;
 var dragging = false;
 var point = null;
 var lastY = 0;
+var scrollIntent = null;
+
+var scrolledDistance;
+var animationInterval;
 // querySelectorAll returns a node list object, xform it into a standard array
 var selectableList = [].slice.call(document.querySelectorAll('.selectable'), 0);
 
@@ -64,8 +73,7 @@ function isPageTop() {
 
 // Is the user attempting to scroll past the bottom or top of the page?
 function outOfPageBounds() {
-  return (scrollTop() + SCROLL_INCREMENT) > scrollHeight() ||
-         (scrollTop() + SCROLL_INCREMENT) <= 0
+  return scrollTop() > scrollHeight() || scrollTop() < 0;
 }
 
 
@@ -92,15 +100,17 @@ var scrollHeight = function () {
 }();
 
 function mouseMoveListener() {
-  document.addEventListener('mousemove', debounce(8, onMouseMove));
+  document.addEventListener('mousemove', onMouseMove);
 }
 
-document.addEventListener('mousedown', onMouseDown);
-document.addEventListener('mouseup', onMouseUp);
-document.addEventListener('mouseout', onMouseOut);
 
-// document.addEventListener('mousein', onMouseIn);
+function init() {
+  document.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('mouseout', onMouseOut);
+}
 
+init();
 
 function cleanup() {
   document.removeEventListener('mousedown', onMouseDown);
@@ -119,6 +129,12 @@ function onMouseOut(event) {
   if (!from || from.nodeName === "HTML") {
    document.removeEventListener('mousemove', onMouseMove);
   }
+}
+
+function cancelAnimation() {
+  isAnimating = false;
+  clearInterval(animationInterval);
+  animationInterval = null;
 }
 
 function onMouseDown(event) {
@@ -143,6 +159,15 @@ function onMouseUp() {
   mouseIsDown = false;
   dragging = false;
 
+  if (isAnimating) {
+    cancelAnimation();
+  }
+
+  if (scrollIntent) {
+    scrollIntent = null;
+    cancelAnimation();
+  }
+
   document.body.className = '';
 
   startVector = null;
@@ -159,10 +184,17 @@ function onMouseMove(event) {
   var x = event.x,
       y = event.y;
 
-  dragging = true;
+
+  if (!dragging) {
+    dragging = true;
+  }
+
+  // if (!scrollIntent && y < 0) {
+  //   scrollIntent = true;
+  //   startAnimation(lastY, 0, 5000);
+  // }
 
   setMouseDirection(y);
-
   shouldSelect();
 
   if ((y + scrollTop()) < scrollHeight()) {
@@ -172,55 +204,19 @@ function onMouseMove(event) {
   updatePoint(x, y);
 }
 
-
-function setMouseDirection(newY) {
-  direction = (lastY < (newY + scrollTop())) ? 'down' : 'up';
-}
-
-var isAnimating = false;
-
-function startAnimation(start, end) {
-  var currentLocation  = start;
-  var timeElapsed = 0;
-  var distance = end - start;
-  isAnimating = true;
-
-  function onTick() {
-    // this statement is too complicated and can be simplified, not sure how yet.
-    if (((currentLocation >= end) && distance > 0) ||
-        ((currentLocation <= end) && distance < 0) || currentLocation === 0 && distance < 0 || currentLocation === end) {
-
-      isAnimating = false;
-      clearInterval(animationInterval);
-      animationInterval = null;
-    } else {
-      timeElapsed += 16;
-      var percentage = timeElapsed / parseInt(2000, 10);
-      var time = percentage > 1 ? 1 : percentage;
-      var position = currentLocation + (distance * easingFunctions.easeInOutQuad(time));
-      window.scrollTo(0, position | 0);
-      currentLocation = window.pageYOffset;
-    }
-  }
-
-  var animationInterval = setInterval(onTick, 16);
-}
-
 function shouldScroll(yPos) {
   if (outOfPageBounds()) {
     return;
   }
 
-  if (!isAnimating) {
-    lastY = yPos + scrollTop();
-
+ if (!isAnimating) {
     var startLocation = window.pageYOffset;
     var endLocation;
 
-    if (direction === 'up' && (yPos < 100)) {
-      endLocation = startLocation - (screenHeight() / 2);
-    } else if (direction === 'down' && (yPos > (screenHeight() - 100))) {
-      endLocation = startLocation + 400;
+    if (direction === 'up' && (yPos < 20)) {
+      endLocation = startLocation - 35;
+    } else if (direction === 'down' && (yPos > (screenHeight() - 50))) {
+      endLocation = startLocation + 35;
     } else {
       return;
     }
@@ -229,8 +225,42 @@ function shouldScroll(yPos) {
   }
 }
 
-function dragScroll(y) {
-  window.scrollBy(0, y);
+function setMouseDirection(newY) {
+  direction = (lastY < (newY + scrollTop())) ? 'down' : 'up';
+}
+
+var isAnimating = false;
+
+function startAnimation(start, end, speed) {
+  var currentLocation  = start;
+  var timeElapsed = 0;
+  var distance = end - start;
+  isAnimating = true;
+
+  speed = speed || 1000;
+
+
+  function onTick() {
+    // this statement is too complicated and can be simplified, not sure how yet.
+    if (((currentLocation >= end) && distance > 0) ||
+        ((currentLocation <= end) && distance < 0) ||
+         currentLocation === 0 && distance < 0 ||
+         currentLocation === end) {
+
+      cancelAnimation();
+    } else {
+
+      timeElapsed += 16;
+      var percentage = timeElapsed / parseInt(speed, 10);
+      percentage = percentage > 1 ? 1 : percentage;
+      var position = currentLocation + (distance * easingFunctions.linear(percentage));
+      window.scrollTo(0, position | 0);
+      currentLocation = window.pageYOffset;
+    }
+    lastY = window.pageYOffset;
+  }
+
+  animationInterval = setInterval(onTick, 16);
 }
 
 function debounce(interval, callback) {
@@ -329,6 +359,10 @@ function removePoint() {
 }
 
 function updatePoint(newX, newY) {
+  if (newY <= 0 && isPageTop()) {
+    return;
+  }
+
   newY = newY + scrollTop();
 
   if (newX < startVector.x) {
