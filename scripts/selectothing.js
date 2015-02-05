@@ -3,7 +3,7 @@
 // that checks to see if the user has scrolled but the y position hasnt moved,
 //i.e. they are at the top of the window. if so, fire off a scroll call to scroll.
 
-// I think onece the mouse has been depressed and hits the bottom, jsut have it scroll quickly till the user releases the button
+// I think onece the mouse has been depressed and hits the bottom, just have it scroll quickly till the user releases the button.
 
 var SELECTED_CLASS = 'selected';
 var SELECTED_REGEXP = new RegExp(SELECTED_CLASS);
