@@ -13,7 +13,7 @@ var direction = null;
 var SCROLL_OFFSET_SLOW = 25;
 var SCROLL_OFFSET_FAST = screenHeight() / 4;
 
-var SCROLL_SPEED_FAST = 10;
+var SCROLL_SPEED_FAST = 150;
 var SCROLL_SPEED_MEDIUM = 500;
 var SCROLL_SPEED_SLOW = 1500;
 
@@ -120,10 +120,19 @@ function mouseMoveListener() {
   document.addEventListener('mousemove', onMouseMove);
 }
 
+function onWindowScroll(event) {
+  var pHeight = window.pageHeight;
+  var sHeight = screenHeight();
+  var totalPages = (pHeight / sHeight) | 0;
+
+  console.log('last known scroll pos', window.scrollY, window);
+}
+
 
 function init() {
   document.addEventListener('mousedown', onMouseDown);
   document.addEventListener('mouseup', onMouseUp);
+  document.addEventListener('scroll', onWindowScroll);
 }
 
 init();
@@ -132,6 +141,7 @@ function cleanup() {
   document.removeEventListener('mousedown', onMouseDown);
   document.removeEventListener('mouseup', onMouseUp);
   document.removeEventListener('mousemove', onMouseMove);
+  document.removeEventListener('scroll', onWindowScroll);
 }
 
 
@@ -255,11 +265,10 @@ function startAnimation(start, end, speed, easing) {
 
   function onTick() {
     // this statement is too complicated and can be simplified, not sure how yet.
-    if ((currentLocation <= end || currentLocation === 0) && distance < 0 ||
-        currentLocation === end || (currentLocation >= end) && distance > 0) {
+    if (((currentLocation <= end || currentLocation === 0) && distance < 0 ||
+        (currentLocation >= end) && distance > 0) && (end > (screenHeight() - Y_THRESH) )) {
       cancelAnimation();
     } else {
-
       timeElapsed += 16;
       var percentage = timeElapsed / parseInt(speed, 10);
       percentage = percentage > 1 ? 1 : percentage;
@@ -372,7 +381,7 @@ function removePoint() {
 }
 
 function updatePoint(newX, newY) {
-  if (newY <= 0 && isPageTop() || newY > pageHeight) {
+  if ((newY <= 0 && isPageTop()) || newY > pageHeight) {
     return;
   }
 
@@ -405,4 +414,3 @@ function Vector(x,y) {
 function clampX(value) {
   return value > pageWidth ? pageWidth : value;
 }
-
